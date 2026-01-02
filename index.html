@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fiche D&D 2024 - Tri & Langues</title>
+    <title>D&D 5e - Gestion Stable</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
@@ -26,12 +26,12 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // --- 1. ICONES ---
-        const IconBase = ({ size = 24, className = "", children }) => (
+        // --- 1. ICONES & UTILITAIRES ---
+        const IconBase = ({ size = 18, className = "", children }) => (
             <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{children}</svg>
         );
 
-        // Icones existantes
+        // Icones
         const Shield = (p) => <IconBase {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></IconBase>;
         const Heart = (p) => <IconBase {...p}><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></IconBase>;
         const Zap = (p) => <IconBase {...p}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></IconBase>;
@@ -50,70 +50,60 @@
         const Users = (p) => <IconBase {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></IconBase>;
         const Backpack = (p) => <IconBase {...p}><path d="M4 10a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><path d="M8 21v-5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v5"/><path d="M8 10h8"/><path d="M9 21v-5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v5"/></IconBase>;
         const MessageSquare = (p) => <IconBase {...p}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></IconBase>;
+        const AlertTriangle = (p) => <IconBase {...p}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></IconBase>;
 
-        // Nouvelles icones pour le tri
-        const ArrowUp = (p) => <IconBase {...p}><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></IconBase>;
-        const ArrowDown = (p) => <IconBase {...p}><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></IconBase>;
-
-        // --- 2. FONCTIONS UTILITAIRES ---
+        // Utilitaires de calcul
         const getModifier = (score) => Math.floor((score - 10) / 2);
         const getProficiencyBonus = (level) => Math.ceil(level / 4) + 1;
         const formatMod = (mod) => (mod >= 0 ? `+${mod}` : mod);
 
-        // Composant pour les flèches de tri
+        // Composant de Tri
         const SortControls = ({ index, total, onMove }) => (
-            <div className="flex flex-col gap-0.5 mx-1">
-                <button 
-                    onClick={() => onMove(index, -1)} 
-                    disabled={index === 0}
-                    className={`text-slate-500 hover:text-amber-400 p-0.5 rounded ${index === 0 ? 'opacity-20 cursor-default' : ''}`}
-                >
-                    <ChevronUp size={12} />
-                </button>
-                <button 
-                    onClick={() => onMove(index, 1)} 
-                    disabled={index === total - 1}
-                    className={`text-slate-500 hover:text-amber-400 p-0.5 rounded ${index === total - 1 ? 'opacity-20 cursor-default' : ''}`}
-                >
-                    <ChevronDown size={12} />
-                </button>
+            <div className="flex flex-col gap-0.5 mx-1 print:hidden">
+                <button onClick={() => onMove(index, -1)} disabled={index === 0} className={`text-slate-500 hover:text-amber-400 p-0.5 rounded ${index === 0 ? 'opacity-20 cursor-default' : ''}`}><ChevronUp size={12} /></button>
+                <button onClick={() => onMove(index, 1)} disabled={index === total - 1} className={`text-slate-500 hover:text-amber-400 p-0.5 rounded ${index === total - 1 ? 'opacity-20 cursor-default' : ''}`}><ChevronDown size={12} /></button>
             </div>
         );
 
-        // --- 3. SOUS-COMPOSANTS ---
+        // --- 2. ERROR BOUNDARY (Empêche l'écran blanc) ---
+        class ErrorBoundary extends React.Component {
+            constructor(props) { super(props); this.state = { hasError: false }; }
+            static getDerivedStateFromError(error) { return { hasError: true }; }
+            componentDidCatch(error, errorInfo) { console.error("Crash Fiche:", error, errorInfo); }
+            render() {
+                if (this.state.hasError) {
+                    return (
+                        <div className="flex flex-col items-center justify-center h-64 text-red-400 gap-4 bg-slate-900 rounded-xl border border-red-900 m-8">
+                            <AlertTriangle size={48} />
+                            <h2 className="text-xl font-bold">Oups, le familier a mangé la fiche.</h2>
+                            <p className="text-sm text-slate-400">Une erreur de données a fait planter l'affichage de ce profil.</p>
+                            <button onClick={() => { localStorage.removeItem(`dnd2024-data-${this.props.charId}`); window.location.reload(); }} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">Réinitialiser ce personnage (Supprimer)</button>
+                        </div>
+                    );
+                }
+                return this.props.children;
+            }
+        }
+
+        // --- 3. SOUS-COMPOSANTS DE LA FICHE ---
         
         const FeatureRow = ({ feature, index, updateChar, featuresList, moveFeature }) => {
             const [expanded, setExpanded] = useState(false);
-            const CHAR_LIMIT = 60;
-            const isLong = feature.description.length > CHAR_LIMIT;
-
-            const updateField = (field, val) => {
-                const newFeatures = [...featuresList];
-                newFeatures[index][field] = val;
-                updateChar('features', newFeatures);
-            };
-
-            const deleteFeature = () => {
-                const newFeatures = featuresList.filter((_, i) => i !== index);
-                updateChar('features', newFeatures);
-            };
+            const isLong = feature.description.length > 60;
+            const update = (f, v) => { const n = [...featuresList]; n[index][f] = v; updateChar('features', n); };
 
             return (
                 <div className="bg-slate-700/30 border border-slate-700 rounded-lg p-2 mb-2 hover:bg-slate-700/50 transition-colors group flex gap-2">
-                    {/* Contrôles de tri à gauche */}
-                    <div className="flex flex-col justify-start pt-1">
-                        <SortControls index={index} total={featuresList.length} onMove={moveFeature} />
-                    </div>
-
+                    <SortControls index={index} total={featuresList.length} onMove={moveFeature} />
                     <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-start mb-1 gap-2">
-                            <input className="font-bold text-amber-400 bg-transparent outline-none w-full text-sm" value={feature.name} onChange={(e) => updateField('name', e.target.value)} placeholder="Nom" />
-                            <button onClick={deleteFeature} className="text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={14} /></button>
+                            <input className="font-bold text-amber-400 bg-transparent outline-none w-full text-sm" value={feature.name} onChange={(e) => update('name', e.target.value)} placeholder="Nom" />
+                            <button onClick={() => {const n=featuresList.filter((_,i)=>i!==index); updateChar('features',n)}} className="text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={14} /></button>
                         </div>
                         <div className="relative">
-                            <textarea className="w-full bg-transparent text-xs text-slate-300 resize-none outline-none leading-relaxed" value={feature.description} rows={expanded || !isLong ? Math.max(2, Math.ceil(feature.description.length / 50)) : 2} onChange={(e) => updateField('description', e.target.value)} placeholder="Desc..." style={{ minHeight: '2.5em' }} />
-                            {isLong && !expanded && <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-slate-800 to-transparent flex items-end justify-center cursor-pointer" onClick={() => setExpanded(true)}><span className="text-[10px] text-amber-500 font-bold bg-slate-900/80 px-2 rounded-full mb-1 flex items-center gap-1">Voir plus <ChevronDown size={10} /></span></div>}
-                            {isLong && expanded && <div className="flex justify-center mt-1 cursor-pointer" onClick={() => setExpanded(false)}><span className="text-[10px] text-slate-500 hover:text-amber-500 flex items-center gap-1">Voir moins <ChevronUp size={10} /></span></div>}
+                            <textarea className="w-full bg-transparent text-xs text-slate-300 resize-none outline-none leading-relaxed" value={feature.description} rows={expanded || !isLong ? 2 : 2} onChange={(e) => update('description', e.target.value)} placeholder="Desc..." style={{ minHeight: '2.5em' }} />
+                            {isLong && !expanded && <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-slate-800 to-transparent flex items-end justify-center cursor-pointer" onClick={() => setExpanded(true)}><ChevronDown size={14} className="text-amber-500 bg-slate-900 rounded-full" /></div>}
+                            {isLong && expanded && <div className="flex justify-center mt-1 cursor-pointer" onClick={() => setExpanded(false)}><ChevronUp size={14} className="text-slate-500" /></div>}
                         </div>
                     </div>
                 </div>
@@ -121,475 +111,244 @@
         };
 
         const InventoryRow = ({ item, index, updateChar, inventoryList, moveInventory }) => {
-            const updateItem = (field, val) => {
-                const n = [...inventoryList];
-                n[index][field] = val;
-                updateChar('inventory', n);
-            };
-            const deleteItem = () => {
-                const n = inventoryList.filter((_, i) => i !== index);
-                updateChar('inventory', n);
-            };
-
+            const update = (f, v) => { const n = [...inventoryList]; n[index][f] = v; updateChar('inventory', n); };
             return (
                 <div className="flex gap-2 mb-1 items-center bg-slate-900/40 p-1.5 rounded border border-slate-700/50 hover:border-slate-600">
                      <SortControls index={index} total={inventoryList.length} onMove={moveInventory} />
-                     <input 
-                        className="bg-transparent text-slate-200 text-sm outline-none flex-1 placeholder-slate-600" 
-                        value={item.name} 
-                        onChange={(e) => updateItem('name', e.target.value)} 
-                        placeholder="Objet"
-                    />
-                     <input 
-                        className="bg-slate-800 text-center text-amber-400 font-mono text-sm rounded w-12 outline-none border border-slate-700 focus:border-amber-500" 
-                        type="number" 
-                        value={item.qty} 
-                        onChange={(e) => updateItem('qty', parseInt(e.target.value) || 1)} 
-                    />
-                     <button onClick={deleteItem} className="text-slate-600 hover:text-red-400 transition-colors"><Trash2 size={14} /></button>
+                     <input className="bg-transparent text-slate-200 text-sm outline-none flex-1 placeholder-slate-600" value={item.name} onChange={(e) => update('name', e.target.value)} placeholder="Objet" />
+                     <input className="bg-slate-800 text-center text-amber-400 font-mono text-sm rounded w-12 outline-none border border-slate-700 focus:border-amber-500" type="number" value={item.qty} onChange={(e) => update('qty', parseInt(e.target.value) || 1)} />
+                     <button onClick={() => {const n=inventoryList.filter((_,i)=>i!==index); updateChar('inventory',n)}} className="text-slate-600 hover:text-red-400 transition-colors"><Trash2 size={14} /></button>
                 </div>
             )
         };
 
-        const StatBox = ({ conf, stats, saves, updateChar, toggleSave, profBonus }) => {
-            const mod = getModifier(stats[conf.key]);
-            const isSaveProficient = saves[conf.key];
-            const saveBonus = mod + (isSaveProficient ? profBonus : 0);
-            
-            return (
-                <div className="bg-slate-800 rounded-lg p-3 flex flex-col items-center relative border border-slate-700 shadow-md">
-                    <span className="text-xs text-slate-400 uppercase tracking-widest font-bold mb-1">{conf.label}</span>
-                    <div className="flex items-center gap-2">
-                        <button onClick={() => updateChar(`stats.${conf.key}`, stats[conf.key] - 1)} className="text-slate-500 hover:text-white">-</button>
-                        <span className="text-2xl font-bold text-white">{stats[conf.key]}</span>
-                        <button onClick={() => updateChar(`stats.${conf.key}`, stats[conf.key] + 1)} className="text-slate-500 hover:text-white">+</button>
-                    </div>
-                    <div className="bg-amber-600 text-white font-bold rounded-full w-10 h-10 flex items-center justify-center -mb-6 border-4 border-slate-900 z-10 shadow-lg">{formatMod(mod)}</div>
-                    <div onClick={() => toggleSave(conf.key)} className={`mt-6 text-xs flex items-center gap-1 cursor-pointer select-none px-2 py-1 rounded ${isSaveProficient ? 'bg-indigo-900/50 text-indigo-200' : 'text-slate-500 hover:text-slate-300'}`}>
-                        <Shield size={10} className={isSaveProficient ? "fill-current" : ""} /><span>Sv: {formatMod(saveBonus)}</span>
-                    </div>
-                </div>
-            );
-        };
-
-        const SkillRow = ({ skill, stats, skills, toggleSkill, profBonus }) => {
-            const statMod = getModifier(stats[skill.stat]);
-            const proficiency = skills[skill.key];
-            let totalBonus = statMod + (proficiency === true ? profBonus : proficiency === 'expert' ? profBonus * 2 : 0);
-            
-            return (
-                <div className="flex items-center justify-between p-2 hover:bg-slate-800 rounded cursor-pointer group transition-colors" onClick={() => toggleSkill(skill.key)}>
-                    <div className="flex items-center gap-2">
-                        <div className={`w-3 h-3 rounded-full border border-slate-500 flex items-center justify-center ${proficiency ? (proficiency === 'expert' ? 'bg-amber-500 border-amber-500' : 'bg-white border-white') : ''}`}></div>
-                        <span className={`text-sm ${proficiency ? 'text-white font-medium' : 'text-slate-400'}`}>{skill.label} <span className="text-xs text-slate-600">({skill.stat.substring(0,3).toUpperCase()})</span></span>
-                    </div>
-                    <span className="text-sm font-mono font-bold text-slate-300">{formatMod(totalBonus)}</span>
-                </div>
-            );
-        };
-
         const AttackRow = ({ attack, index, updateChar, attacksList, moveAttack }) => {
-            const updateField = (field, val) => {
-                const n = [...attacksList];
-                n[index][field] = val;
-                updateChar('attacks', n);
-            };
-            const deleteAtk = () => {
-                const n = attacksList.filter((_, i) => i !== index);
-                updateChar('attacks', n);
-            };
-
+            const update = (f, v) => { const n = [...attacksList]; n[index][f] = v; updateChar('attacks', n); };
             return (
                 <div className="bg-slate-700/50 p-2 rounded mb-2 flex flex-col md:flex-row md:items-center justify-between gap-2 border border-slate-600">
                     <div className="flex items-center gap-2 w-full md:w-auto flex-1">
                         <SortControls index={index} total={attacksList.length} onMove={moveAttack} />
-                        <input className="bg-transparent text-amber-400 font-bold outline-none w-full" value={attack.name} onChange={(e) => updateField('name', e.target.value)} />
+                        <input className="bg-transparent text-amber-400 font-bold outline-none w-full" value={attack.name} onChange={(e) => update('name', e.target.value)} />
                     </div>
                     <div className="flex gap-2">
-                        <input className="bg-slate-800 text-center text-white rounded w-12 text-sm p-1" placeholder="Atq" value={attack.bonus} onChange={(e) => updateField('bonus', e.target.value)} />
-                        <input className="bg-slate-800 text-white rounded w-full md:w-32 text-sm p-1" placeholder="Dégâts" value={attack.damage} onChange={(e) => updateField('damage', e.target.value)} />
-                        <button className="text-red-400 hover:text-red-300 p-1" onClick={deleteAtk}><Trash2 size={16} /></button>
+                        <input className="bg-slate-800 text-center text-white rounded w-12 text-sm p-1" placeholder="Atq" value={attack.bonus} onChange={(e) => update('bonus', e.target.value)} />
+                        <input className="bg-slate-800 text-white rounded w-full md:w-32 text-sm p-1" placeholder="Dégâts" value={attack.damage} onChange={(e) => update('damage', e.target.value)} />
+                        <button className="text-red-400 hover:text-red-300 p-1" onClick={() => {const n=attacksList.filter((_,i)=>i!==index); updateChar('attacks',n)}}><Trash2 size={16} /></button>
                     </div>
                 </div>
             );
         };
 
-        const CoinInput = ({ label, type, color, coins, updateChar }) => (
-            <div className="bg-slate-900/50 rounded p-2 flex flex-col items-center border border-slate-700/50">
-                <label className={`text-xs font-bold mb-1 uppercase ${color}`}>{label}</label>
-                <input type="number" value={coins[type]} onChange={(e) => updateChar(`coins.${type}`, parseInt(e.target.value) || 0)} className="bg-transparent text-center text-white font-mono w-full outline-none focus:text-amber-400" placeholder="0" />
-            </div>
-        );
-
-        // --- 4. CONFIG DATA ---
-        const statsConfig = [{key:'str',label:'Force'},{key:'dex',label:'Dextérité'},{key:'con',label:'Constitution'},{key:'int',label:'Intelligence'},{key:'wis',label:'Sagesse'},{key:'cha',label:'Charisme'}];
-        const skillsList = [
-            {key:'acrobatics',label:'Acrobaties',stat:'dex'},{key:'animal_handling',label:'Dressage',stat:'wis'},{key:'arcana',label:'Arcanes',stat:'int'},{key:'athletics',label:'Athlétisme',stat:'str'},{key:'deception',label:'Tromperie',stat:'cha'},{key:'history',label:'Histoire',stat:'int'},{key:'insight',label:'Intuition',stat:'wis'},{key:'intimidation',label:'Intimidation',stat:'cha'},{key:'investigation',label:'Investigation',stat:'int'},{key:'medicine',label:'Médecine',stat:'wis'},{key:'nature',label:'Nature',stat:'int'},{key:'perception',label:'Perception',stat:'wis'},{key:'performance',label:'Représentation',stat:'cha'},{key:'persuasion',label:'Persuasion',stat:'cha'},{key:'religion',label:'Religion',stat:'int'},{key:'sleight_of_hand',label:'Escamotage',stat:'dex'},{key:'stealth',label:'Discrétion',stat:'dex'},{key:'survival',label:'Survie',stat:'wis'},
-        ];
-
-        // --- 5. COMPOSANT PRINCIPAL ---
-        const CharacterSheet = () => {
+        // --- 4. COMPOSANT FICHE (CHARACTER SHEET) ---
+        // Ce composant est "détruit" et recréé à chaque changement d'ID grâce à la "key"
+        const CharacterSheet = ({ characterId, updateProfileName }) => {
             const initialCharacter = {
-                name: "Nouveau Personnage",
-                class: "Classe",
-                level: 1,
-                species: "Espèce",
-                background: "Historique",
-                alignment: "",
-                xp: 0,
-                heroicInspiration: false,
-                image: null, 
+                name: "Nouveau Personnage", class: "Classe", level: 1, species: "Espèce", background: "Historique", alignment: "",
+                xp: 0, heroicInspiration: false, image: null, 
                 stats: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
-                hp: { current: 10, max: 10, temp: 0 },
-                ac: 10,
-                speed: 30,
-                initiativeBonus: 0,
-                deathSaves: { success: 0, failures: 0 },
-                skills: {},
-                saves: {},
-                coins: { cp: 0, sp: 0, gp: 0, pp: 0 },
-                attacks: [ { id: 1, name: "Attaque de base", bonus: "+2", damage: "1d6+0" } ],
-                features: [],
-                languages: "", 
-                inventory: [ {id: 1, name: "Sac à dos", qty: 1}, {id: 2, name: "Rations", qty: 5} ], 
-                notes: ""
+                hp: { current: 10, max: 10, temp: 0 }, ac: 10, speed: 30, initiativeBonus: 0,
+                skills: {}, saves: {}, coins: { cp: 0, sp: 0, gp: 0, pp: 0 },
+                attacks: [ { id: 1, name: "Attaque de base", bonus: "+2", damage: "1d6" } ],
+                features: [], languages: "", inventory: [], notes: ""
             };
 
-            const [profiles, setProfiles] = useState([]); 
-            const [activeId, setActiveId] = useState(null); 
-            const [char, setChar] = useState(initialCharacter);
-            const [isLoaded, setIsLoaded] = useState(false);
-
+            const [char, setChar] = useState(null); // Null au départ = Chargement
             const fileInputRef = useRef(null);
             const importInputRef = useRef(null);
 
-            // Init
+            // Charger les données au montage (et seulement au montage !)
             useEffect(() => {
-                const storedIndex = localStorage.getItem('dnd2024-index');
-                let index = [];
-                if (storedIndex) {
-                    try { index = JSON.parse(storedIndex); } catch (e) { console.error(e); }
-                }
-
-                if (index.length === 0) {
-                    const newId = 'char-' + Date.now();
-                    index = [{ id: newId, name: "Nouveau Personnage" }];
-                    localStorage.setItem('dnd2024-index', JSON.stringify(index));
-                    localStorage.setItem(`dnd2024-data-${newId}`, JSON.stringify(initialCharacter));
-                }
-
-                setProfiles(index);
-                const lastActive = localStorage.getItem('dnd2024-active-id');
-                const targetId = (lastActive && index.find(p => p.id === lastActive)) ? lastActive : index[0].id;
-                setActiveId(targetId);
-            }, []);
-
-            // Charger
-            useEffect(() => {
-                if (!activeId) return;
-                setIsLoaded(false);
-                const storedData = localStorage.getItem(`dnd2024-data-${activeId}`);
+                const storedData = localStorage.getItem(`dnd2024-data-${characterId}`);
                 if (storedData) {
                     try {
                         const parsed = JSON.parse(storedData);
-                        const migrated = { 
-                            ...initialCharacter, 
-                            ...parsed,
-                            inventory: Array.isArray(parsed.inventory) ? parsed.inventory : initialCharacter.inventory
+                        // Deep Merge de sécurité
+                        const safeChar = { 
+                            ...initialCharacter, ...parsed,
+                            stats: { ...initialCharacter.stats, ...(parsed.stats || {}) },
+                            hp: { ...initialCharacter.hp, ...(parsed.hp || {}) },
+                            coins: { ...initialCharacter.coins, ...(parsed.coins || {}) },
+                            skills: { ...initialCharacter.skills, ...(parsed.skills || {}) },
+                            saves: { ...initialCharacter.saves, ...(parsed.saves || {}) },
+                            attacks: Array.isArray(parsed.attacks) ? parsed.attacks : [],
+                            features: Array.isArray(parsed.features) ? parsed.features : [],
+                            inventory: Array.isArray(parsed.inventory) ? parsed.inventory : [],
                         };
-                        setChar(migrated);
-                    } catch (e) { setChar(initialCharacter); }
+                        setChar(safeChar);
+                    } catch (e) { console.error(e); setChar(initialCharacter); }
                 } else {
                     setChar(initialCharacter);
                 }
-                localStorage.setItem('dnd2024-active-id', activeId);
-                setTimeout(() => setIsLoaded(true), 50);
-            }, [activeId]);
+            }, []); // [] = s'exécute une seule fois car le composant est remonté à chaque ID
 
-            // Sauvegarder
+            // Sauvegarder dès que char change
             useEffect(() => {
-                if (!isLoaded || !activeId) return;
-                localStorage.setItem(`dnd2024-data-${activeId}`, JSON.stringify(char));
-                setProfiles(prev => {
-                    const currentProfile = prev.find(p => p.id === activeId);
-                    if (currentProfile && currentProfile.name !== char.name) {
-                        const newIndex = prev.map(p => p.id === activeId ? { ...p, name: char.name } : p);
-                        localStorage.setItem('dnd2024-index', JSON.stringify(newIndex));
-                        return newIndex;
-                    }
-                    return prev;
-                });
-            }, [char, activeId, isLoaded]);
+                if (!char) return; // Ne pas sauver si pas encore chargé
+                localStorage.setItem(`dnd2024-data-${characterId}`, JSON.stringify(char));
+                // Remonter le nom au parent pour la liste
+                updateProfileName(characterId, char.name);
+            }, [char, characterId]);
 
             // Handlers
-            const handleCreateProfile = () => {
-                const newId = 'char-' + Date.now();
-                const newProfile = { id: newId, name: "Nouveau Personnage" };
-                const newProfiles = [...profiles, newProfile];
-                setProfiles(newProfiles);
-                localStorage.setItem('dnd2024-index', JSON.stringify(newProfiles));
-                localStorage.setItem(`dnd2024-data-${newId}`, JSON.stringify(initialCharacter));
-                setActiveId(newId);
-            };
-
-            const handleDeleteProfile = () => {
-                if (profiles.length <= 1) {
-                    alert("Impossible de supprimer le dernier personnage.");
-                    return;
-                }
-                if (!confirm(`Voulez-vous vraiment supprimer "${char.name}" ?`)) return;
-                const newProfiles = profiles.filter(p => p.id !== activeId);
-                localStorage.removeItem(`dnd2024-data-${activeId}`);
-                localStorage.setItem('dnd2024-index', JSON.stringify(newProfiles));
-                setProfiles(newProfiles);
-                setActiveId(newProfiles[0].id);
-            };
-
             const updateChar = (path, value) => {
                 setChar(prev => {
                     const newData = { ...prev };
                     const keys = path.split('.');
                     let current = newData;
-                    for (let i = 0; i < keys.length - 1; i++) {
-                        current = current[keys[i]];
-                    }
+                    for (let i = 0; i < keys.length - 1; i++) current = current[keys[i]];
                     current[keys[keys.length - 1]] = value;
                     return newData;
                 });
             };
 
-            // Fonction Générique pour déplacer un item dans un tableau
             const moveItem = (listKey, index, direction) => {
                 setChar(prev => {
                     const list = [...prev[listKey]];
-                    if (direction === -1 && index > 0) { // Monter
-                        [list[index], list[index - 1]] = [list[index - 1], list[index]];
-                    } else if (direction === 1 && index < list.length - 1) { // Descendre
-                        [list[index], list[index + 1]] = [list[index + 1], list[index]];
-                    }
+                    if (direction === -1 && index > 0) [list[index], list[index-1]] = [list[index-1], list[index]];
+                    else if (direction === 1 && index < list.length -1) [list[index], list[index+1]] = [list[index+1], list[index]];
                     return { ...prev, [listKey]: list };
                 });
             };
 
             const exportData = () => {
-                const dataStr = JSON.stringify(char, null, 2);
-                const blob = new Blob([dataStr], { type: "application/json" });
+                const blob = new Blob([JSON.stringify(char, null, 2)], { type: "application/json" });
                 const url = URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                const safeName = char.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-                link.download = `${safeName}_dnd2024.json`;
-                link.href = url;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
+                const a = document.createElement("a");
+                a.href = url; a.download = `${char.name.replace(/[^a-z0-9]/gi, '_')}.json`;
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
             };
 
             const importData = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
                 const reader = new FileReader();
-                reader.onload = (event) => {
-                    try {
-                        const importedData = JSON.parse(event.target.result);
-                        setChar(prev => ({ ...initialCharacter, ...importedData }));
-                        e.target.value = null;
-                    } catch (err) { alert("JSON invalide"); }
+                reader.onload = (ev) => {
+                    try { setChar(prev => ({ ...initialCharacter, ...JSON.parse(ev.target.result) })); } 
+                    catch (err) { alert("Erreur fichier JSON"); }
                 };
                 reader.readAsText(file);
             };
 
-            const handleImageUpload = (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onloadend = () => updateChar('image', reader.result);
-                    reader.readAsDataURL(file);
-                }
-            };
-
-            const toggleSkill = (skillKey) => {
-                setChar(prev => {
-                    const current = prev.skills[skillKey];
-                    let nextVal = !current ? true : (current === true ? 'expert' : false);
-                    return { ...prev, skills: { ...prev.skills, [skillKey]: nextVal } };
-                });
-            };
-
-            const toggleSave = (statKey) => {
-                setChar(prev => ({
-                    ...prev,
-                    saves: { ...prev.saves, [statKey]: !prev.saves[statKey] }
-                }));
-            };
-            
-            const addInventoryItem = () => {
-                setChar(prev => ({
-                    ...prev,
-                    inventory: [...(prev.inventory || []), { id: Date.now(), name: "Nouvel objet", qty: 1 }]
-                }));
-            };
+            if (!char) return <div className="text-white p-10 text-center animate-pulse">Chargement du grimoire...</div>;
 
             const profBonus = getProficiencyBonus(char.level);
+            const statsConfig = [{key:'str',label:'Force'},{key:'dex',label:'Dextérité'},{key:'con',label:'Constitution'},{key:'int',label:'Intelligence'},{key:'wis',label:'Sagesse'},{key:'cha',label:'Charisme'}];
+            const skillsList = [ {key:'acrobatics',label:'Acrobaties',stat:'dex'},{key:'animal_handling',label:'Dressage',stat:'wis'},{key:'arcana',label:'Arcanes',stat:'int'},{key:'athletics',label:'Athlétisme',stat:'str'},{key:'deception',label:'Tromperie',stat:'cha'},{key:'history',label:'Histoire',stat:'int'},{key:'insight',label:'Intuition',stat:'wis'},{key:'intimidation',label:'Intimidation',stat:'cha'},{key:'investigation',label:'Investigation',stat:'int'},{key:'medicine',label:'Médecine',stat:'wis'},{key:'nature',label:'Nature',stat:'int'},{key:'perception',label:'Perception',stat:'wis'},{key:'performance',label:'Représentation',stat:'cha'},{key:'persuasion',label:'Persuasion',stat:'cha'},{key:'religion',label:'Religion',stat:'int'},{key:'sleight_of_hand',label:'Escamotage',stat:'dex'},{key:'stealth',label:'Discrétion',stat:'dex'},{key:'survival',label:'Survie',stat:'wis'} ];
 
             return (
-                <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-amber-500/30 flex flex-col">
-                    {/* BARRE DE GESTION */}
-                    <div className="bg-slate-950 border-b border-slate-800 py-2 px-4 flex flex-col sm:flex-row justify-between items-center gap-3 print:hidden">
-                        <div className="flex items-center gap-3 w-full sm:w-auto">
-                            <div className="flex items-center gap-2 text-amber-500 font-bold uppercase text-xs tracking-widest">
-                                <Users size={16} /> Profils
-                            </div>
-                            <select 
-                                value={activeId || ''} 
-                                onChange={(e) => setActiveId(e.target.value)}
-                                className="bg-slate-900 text-white text-sm border border-slate-700 rounded px-2 py-1 outline-none focus:border-amber-500 flex-1 sm:w-64"
-                            >
-                                {profiles.map(p => (
-                                    <option key={p.id} value={p.id}>{p.name} {p.id === activeId ? '(Actif)' : ''}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="flex gap-2">
-                            <button onClick={handleCreateProfile} className="flex items-center gap-1 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 text-xs px-3 py-1.5 rounded border border-emerald-600/50 transition">
-                                <Plus size={14} /> Nouveau
-                            </button>
-                            <button onClick={handleDeleteProfile} className="flex items-center gap-1 bg-red-600/20 hover:bg-red-600/40 text-red-400 text-xs px-3 py-1.5 rounded border border-red-600/50 transition">
-                                <Trash2 size={14} /> Supprimer
-                            </button>
-                        </div>
-                    </div>
-
+                <div className="animate-in fade-in duration-300">
                     <header className="bg-slate-900 border-b border-slate-800 p-4 sticky top-0 z-50 shadow-lg">
-                        <div className="max-w-6xl mx-auto">
-                            <div className="flex flex-col md:flex-row md:items-center gap-4">
-                                <div className="relative group shrink-0 w-24 h-24 md:w-28 md:h-28 rounded-full bg-slate-800 border-2 border-slate-700 overflow-hidden cursor-pointer hover:border-amber-500 transition-colors" onClick={() => fileInputRef.current.click()}>
-                                    {char.image ? <img src={char.image} alt="Portrait" className="w-full h-full object-cover" /> : <div className="w-full h-full flex flex-col items-center justify-center text-slate-600 group-hover:text-amber-500/50 transition-colors"><User size={32} /><span className="text-[10px] mt-1 font-bold uppercase">Ajouter</span></div>}
-                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"><Camera className="text-white" size={24} /></div>
-                                    <input type="file" ref={fileInputRef} onChange={handleImageUpload} className="hidden" accept="image/*" />
+                        <div className="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center gap-4">
+                            <div className="relative group shrink-0 w-24 h-24 md:w-28 md:h-28 rounded-full bg-slate-800 border-2 border-slate-700 overflow-hidden cursor-pointer hover:border-amber-500 transition-colors" onClick={() => fileInputRef.current.click()}>
+                                {char.image ? <img src={char.image} className="w-full h-full object-cover" /> : <div className="w-full h-full flex flex-col items-center justify-center text-slate-600 group-hover:text-amber-500/50"><User size={32} /></div>}
+                                <input type="file" ref={fileInputRef} onChange={(e) => {const f=e.target.files[0]; if(f){const r=new FileReader(); r.onload=()=>updateChar('image',r.result); r.readAsDataURL(f)}}} className="hidden" accept="image/*" />
+                            </div>
+                            <div className="flex-1 w-full">
+                                <input type="text" value={char.name} onChange={(e) => updateChar('name', e.target.value)} className="bg-transparent text-2xl md:text-3xl font-bold text-white placeholder-slate-600 w-full outline-none" />
+                                <div className="flex flex-wrap gap-2 text-sm text-slate-400 mt-2 items-center">
+                                    <input value={char.species} onChange={(e) => updateChar('species', e.target.value)} className="bg-slate-800/50 rounded px-2 py-0.5 outline-none hover:bg-slate-800 focus:text-amber-400 w-32" placeholder="Espèce" />
+                                    <input value={char.class} onChange={(e) => updateChar('class', e.target.value)} className="bg-slate-800/50 rounded px-2 py-0.5 outline-none hover:bg-slate-800 focus:text-amber-400 w-24" placeholder="Classe" />
+                                    <div className="flex items-center bg-slate-800/50 rounded px-2 py-0.5"><span className="text-slate-500 text-xs mr-1">Niv</span><input type="number" value={char.level} onChange={(e) => updateChar('level', parseInt(e.target.value) || 1)} className="bg-transparent w-8 text-center outline-none focus:text-amber-400" /></div>
+                                    <input value={char.background} onChange={(e) => updateChar('background', e.target.value)} className="bg-slate-800/50 rounded px-2 py-0.5 outline-none hover:bg-slate-800 focus:text-amber-400 w-32" placeholder="Historique" />
+                                    <input value={char.alignment} onChange={(e) => updateChar('alignment', e.target.value)} className="bg-slate-800/50 rounded px-2 py-0.5 outline-none hover:bg-slate-800 focus:text-amber-400 w-32" placeholder="Alignement" />
                                 </div>
-                                <div className="flex-1 w-full">
-                                    <input type="text" value={char.name} onChange={(e) => updateChar('name', e.target.value)} className="bg-transparent text-2xl md:text-3xl font-bold text-white placeholder-slate-600 w-full outline-none" />
-                                    <div className="flex flex-wrap gap-2 text-sm text-slate-400 mt-2 items-center">
-                                        <input value={char.species} onChange={(e) => updateChar('species', e.target.value)} className="bg-slate-800/50 rounded px-2 py-0.5 outline-none hover:bg-slate-800 focus:text-amber-400 w-32" placeholder="Espèce" />
-                                        <input value={char.class} onChange={(e) => updateChar('class', e.target.value)} className="bg-slate-800/50 rounded px-2 py-0.5 outline-none hover:bg-slate-800 focus:text-amber-400 w-24" placeholder="Classe" />
-                                        <div className="flex items-center bg-slate-800/50 rounded px-2 py-0.5"><span className="text-slate-500 text-xs mr-1">Niv</span><input type="number" value={char.level} onChange={(e) => updateChar('level', parseInt(e.target.value) || 1)} className="bg-transparent w-8 text-center outline-none focus:text-amber-400" /></div>
-                                        <input value={char.background} onChange={(e) => updateChar('background', e.target.value)} className="bg-slate-800/50 rounded px-2 py-0.5 outline-none hover:bg-slate-800 focus:text-amber-400 w-32" placeholder="Historique" />
-                                        <input value={char.alignment} onChange={(e) => updateChar('alignment', e.target.value)} className="bg-slate-800/50 rounded px-2 py-0.5 outline-none hover:bg-slate-800 focus:text-amber-400 w-32" placeholder="Alignement" />
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-4 bg-slate-800 p-2 rounded-lg border border-slate-700 shrink-0">
-                                    <div className="text-center px-2"><div className="text-xs text-slate-400 uppercase">Maîtrise</div><div className="text-xl font-bold text-amber-400">+{profBonus}</div></div>
-                                    <div className="w-px h-8 bg-slate-700"></div>
-                                    <div className="flex items-center gap-2 cursor-pointer" onClick={() => updateChar('heroicInspiration', !char.heroicInspiration)}><Dice5 size={24} className={char.heroicInspiration ? "text-amber-400 animate-pulse" : "text-slate-600"} /><div className="flex flex-col"><span className="text-xs text-slate-400 uppercase leading-none">Inspiration</span><span className="text-xs text-slate-400 uppercase leading-none">Héroïque</span></div></div>
-                                </div>
+                            </div>
+                            <div className="flex items-center gap-4 bg-slate-800 p-2 rounded-lg border border-slate-700 shrink-0">
+                                <div className="text-center px-2"><div className="text-xs text-slate-400 uppercase">Maîtrise</div><div className="text-xl font-bold text-amber-400">+{profBonus}</div></div>
+                                <div className="w-px h-8 bg-slate-700"></div>
+                                <div className="flex items-center gap-2 cursor-pointer" onClick={() => updateChar('heroicInspiration', !char.heroicInspiration)}><Dice5 size={24} className={char.heroicInspiration ? "text-amber-400 animate-pulse" : "text-slate-600"} /><div className="flex flex-col"><span className="text-xs text-slate-400 uppercase leading-none">Inspiration</span></div></div>
                             </div>
                         </div>
                     </header>
 
                     <main className="max-w-6xl mx-auto p-4 grid grid-cols-1 md:grid-cols-12 gap-6 flex-1 w-full">
+                        {/* COLONNE STATS */}
                         <div className="md:col-span-3 lg:col-span-2 grid grid-cols-3 md:grid-cols-1 gap-4 h-fit">
-                            {statsConfig.map(stat => (
-                                <StatBox key={stat.key} conf={stat} stats={char.stats} saves={char.saves} updateChar={updateChar} toggleSave={toggleSave} profBonus={profBonus} />
-                            ))}
+                            {statsConfig.map(c => {
+                                const mod = getModifier(char.stats[c.key]);
+                                const isProf = char.saves[c.key];
+                                return (
+                                    <div key={c.key} className="bg-slate-800 rounded-lg p-3 flex flex-col items-center relative border border-slate-700 shadow-md">
+                                        <span className="text-xs text-slate-400 uppercase tracking-widest font-bold mb-1">{c.label}</span>
+                                        <div className="flex items-center gap-2">
+                                            <button onClick={() => updateChar(`stats.${c.key}`, char.stats[c.key]-1)} className="text-slate-500 hover:text-white">-</button>
+                                            <span className="text-2xl font-bold text-white">{char.stats[c.key]}</span>
+                                            <button onClick={() => updateChar(`stats.${c.key}`, char.stats[c.key]+1)} className="text-slate-500 hover:text-white">+</button>
+                                        </div>
+                                        <div className="bg-amber-600 text-white font-bold rounded-full w-10 h-10 flex items-center justify-center -mb-6 border-4 border-slate-900 z-10 shadow-lg">{formatMod(mod)}</div>
+                                        <div onClick={()=>{const n={...char.saves}; n[c.key]=!n[c.key]; updateChar('saves',n)}} className={`mt-6 text-xs flex items-center gap-1 cursor-pointer select-none px-2 py-1 rounded ${isProf ? 'bg-indigo-900/50 text-indigo-200' : 'text-slate-500 hover:text-slate-300'}`}>
+                                            <Shield size={10} className={isProf ? "fill-current" : ""} /><span>Sv: {formatMod(mod + (isProf?profBonus:0))}</span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
+
+                        {/* COLONNE CENTRALE */}
                         <div className="md:col-span-5 lg:col-span-6 space-y-6">
                             <div className="grid grid-cols-3 gap-4">
-                                <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 flex flex-col items-center justify-center relative overflow-hidden">
-                                    <Shield className="absolute text-slate-700/20 w-16 h-16 -bottom-4 -right-4" /><span className="text-xs text-slate-400 uppercase font-bold">CA</span><input type="number" value={char.ac} onChange={(e) => updateChar('ac', parseInt(e.target.value) || 10)} className="bg-transparent text-3xl font-bold text-white text-center w-full outline-none z-10" />
-                                </div>
-                                <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 flex flex-col items-center justify-center cursor-pointer hover:border-amber-500/50 transition-colors">
-                                    <span className="text-xs text-slate-400 uppercase font-bold">Init</span><div className="text-3xl font-bold text-amber-400">{formatMod(getModifier(char.stats.dex) + (char.initiativeBonus || 0))}</div>
-                                </div>
-                                <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 flex flex-col items-center justify-center">
-                                    <span className="text-xs text-slate-400 uppercase font-bold">Vitesse</span><div className="flex items-baseline"><input type="number" value={char.speed} onChange={(e) => updateChar('speed', parseInt(e.target.value) || 30)} className="bg-transparent text-3xl font-bold text-white text-center w-12 outline-none" /><span className="text-xs text-slate-500">ft</span></div>
-                                </div>
+                                <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 flex flex-col items-center justify-center relative"><Shield className="absolute text-slate-700/20 w-16 h-16 -bottom-4 -right-4" /><span className="text-xs text-slate-400 uppercase font-bold">CA</span><input type="number" value={char.ac} onChange={(e) => updateChar('ac', parseInt(e.target.value) || 10)} className="bg-transparent text-3xl font-bold text-white text-center w-full outline-none z-10" /></div>
+                                <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 flex flex-col items-center justify-center"><span className="text-xs text-slate-400 uppercase font-bold">Init</span><div className="text-3xl font-bold text-amber-400">{formatMod(getModifier(char.stats.dex) + (char.initiativeBonus || 0))}</div></div>
+                                <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 flex flex-col items-center justify-center"><span className="text-xs text-slate-400 uppercase font-bold">Vitesse</span><div className="flex items-baseline"><input type="number" value={char.speed} onChange={(e) => updateChar('speed', parseInt(e.target.value) || 30)} className="bg-transparent text-3xl font-bold text-white text-center w-12 outline-none" /><span className="text-xs text-slate-500">ft</span></div></div>
                             </div>
+                            
                             <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 relative overflow-hidden">
-                                <div className="flex justify-between items-end mb-2 relative z-10">
-                                    <label className="text-slate-400 text-sm font-bold uppercase flex items-center gap-2"><Heart className="text-red-500 fill-current" size={16} /> Points de Vie</label>
-                                    <div className="flex items-center gap-1 text-sm text-slate-500">Max: <input type="number" value={char.hp.max} onChange={(e) => updateChar('hp.max', parseInt(e.target.value) || 0)} className="bg-slate-900 text-slate-300 w-12 text-center rounded border border-slate-700 p-0.5" /></div>
-                                </div>
-                                <div className="flex items-center gap-4 relative z-10">
-                                    <button onClick={() => updateChar('hp.current', char.hp.current - 1)} className="bg-red-900/30 hover:bg-red-900/50 text-red-200 w-10 h-10 rounded-full flex items-center justify-center border border-red-900">-</button>
-                                    <input type="number" value={char.hp.current} onChange={(e) => updateChar('hp.current', parseInt(e.target.value) || 0)} className={`bg-transparent text-5xl font-bold text-center w-full outline-none ${char.hp.current <= (char.hp.max/2) ? 'text-red-400' : 'text-white'}`} />
-                                    <button onClick={() => updateChar('hp.current', char.hp.current + 1)} className="bg-green-900/30 hover:bg-green-900/50 text-green-200 w-10 h-10 rounded-full flex items-center justify-center border border-green-900">+</button>
-                                </div>
-                                <div className="mt-4 flex items-center justify-center gap-2 relative z-10">
-                                    <span className="text-xs text-slate-500 uppercase">PV Temporaires</span>
-                                    <input type="number" value={char.hp.temp} onChange={(e) => updateChar('hp.temp', parseInt(e.target.value) || 0)} className="bg-slate-900/50 text-blue-300 font-bold w-16 text-center rounded border border-slate-700 p-1" />
-                                </div>
+                                <div className="flex justify-between items-end mb-2 relative z-10"><label className="text-slate-400 text-sm font-bold uppercase flex items-center gap-2"><Heart className="text-red-500 fill-current" size={16} /> Points de Vie</label><div className="flex items-center gap-1 text-sm text-slate-500">Max: <input type="number" value={char.hp.max} onChange={(e) => updateChar('hp.max', parseInt(e.target.value) || 0)} className="bg-slate-900 text-slate-300 w-12 text-center rounded border border-slate-700 p-0.5" /></div></div>
+                                <div className="flex items-center gap-4 relative z-10"><button onClick={() => updateChar('hp.current', char.hp.current - 1)} className="bg-red-900/30 hover:bg-red-900/50 text-red-200 w-10 h-10 rounded-full flex items-center justify-center border border-red-900">-</button><input type="number" value={char.hp.current} onChange={(e) => updateChar('hp.current', parseInt(e.target.value) || 0)} className={`bg-transparent text-5xl font-bold text-center w-full outline-none ${char.hp.current <= (char.hp.max/2) ? 'text-red-400' : 'text-white'}`} /><button onClick={() => updateChar('hp.current', char.hp.current + 1)} className="bg-green-900/30 hover:bg-green-900/50 text-green-200 w-10 h-10 rounded-full flex items-center justify-center border border-green-900">+</button></div>
                                 <div className="absolute bottom-0 left-0 h-1 bg-slate-700 w-full"><div className="h-full bg-gradient-to-r from-red-600 to-amber-600 transition-all duration-500" style={{ width: `${Math.min((char.hp.current / char.hp.max) * 100, 100)}%` }}></div></div>
                             </div>
+
                             <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="font-bold text-slate-300 flex items-center gap-2"><Sword size={18} /> Attaques</h3>
-                                    <button onClick={() => setChar(p => ({ ...p, attacks: [...p.attacks, { id: Date.now(), name: "Arme", bonus: "+0", damage: "1d6" }] }))} className="text-xs bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded transition">+ Ajouter</button>
-                                </div>
-                                <div>{char.attacks.map((atk, i) => <AttackRow key={atk.id} attack={atk} index={i} updateChar={updateChar} attacksList={char.attacks} moveAttack={(idx, dir) => moveItem('attacks', idx, dir)} />)}</div>
+                                <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-slate-300 flex items-center gap-2"><Sword size={18} /> Attaques</h3><button onClick={() => updateChar('attacks', [...char.attacks, { id: Date.now(), name: "Arme", bonus: "+0", damage: "1d6" }])} className="text-xs bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded transition">+ Ajouter</button></div>
+                                <div>{char.attacks.map((atk, i) => <AttackRow key={atk.id || i} attack={atk} index={i} updateChar={updateChar} attacksList={char.attacks} moveAttack={(idx, d) => moveItem('attacks', idx, d)} />)}</div>
                                 <div className="mt-6 pt-4 border-t border-slate-700">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <h3 className="font-bold text-slate-300 flex items-center gap-2 text-sm uppercase tracking-wider"><Zap size={16} /> Capacités & Traits</h3>
-                                        <button onClick={() => setChar(p => ({ ...p, features: [...(p.features || []), { id: Date.now(), name: "Nouveau Trait", description: "" }] }))} className="text-xs flex items-center gap-1 bg-amber-600/20 hover:bg-amber-600/40 text-amber-400 px-2 py-1 rounded transition"><Plus size={12} /> Trait</button>
-                                    </div>
-                                    <div className="space-y-1">
-                                        {Array.isArray(char.features) && char.features.map((feat, i) => (<FeatureRow key={feat.id || i} feature={feat} index={i} updateChar={updateChar} featuresList={char.features} moveFeature={(idx, dir) => moveItem('features', idx, dir)} />))}
-                                    </div>
+                                    <div className="flex justify-between items-center mb-2"><h3 className="font-bold text-slate-300 flex items-center gap-2 text-sm uppercase tracking-wider"><Zap size={16} /> Capacités & Traits</h3><button onClick={() => updateChar('features', [...char.features, { id: Date.now(), name: "Nouveau Trait", description: "" }])} className="text-xs bg-amber-600/20 hover:bg-amber-600/40 text-amber-400 px-2 py-1 rounded transition"><Plus size={12} /> Trait</button></div>
+                                    <div className="space-y-1">{char.features.map((feat, i) => <FeatureRow key={feat.id || i} feature={feat} index={i} updateChar={updateChar} featuresList={char.features} moveFeature={(idx, d) => moveItem('features', idx, d)} />)}</div>
                                 </div>
                             </div>
                         </div>
+
+                        {/* COLONNE DROITE */}
                         <div className="md:col-span-4 lg:col-span-4 flex flex-col gap-6">
                             <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 flex-none">
                                 <h3 className="font-bold text-slate-300 mb-3 flex items-center gap-2 text-sm uppercase tracking-wider"><User size={16} /> Compétences</h3>
                                 <div className="space-y-0.5 divide-y divide-slate-700/50">
-                                    {skillsList.map(skill => (
-                                        <SkillRow key={skill.key} skill={skill} stats={char.stats} skills={char.skills} toggleSkill={toggleSkill} profBonus={profBonus} />
-                                    ))}
+                                    {skillsList.map(s => {
+                                        const p = char.skills[s.key];
+                                        const tot = getModifier(char.stats[s.stat]) + (p===true?profBonus:p==='expert'?profBonus*2:0);
+                                        return (
+                                            <div key={s.key} className="flex items-center justify-between p-2 hover:bg-slate-800 rounded cursor-pointer group" onClick={()=>{const n={...char.skills}; n[s.key]=!p?true:(p===true?'expert':false); updateChar('skills',n)}}>
+                                                <div className="flex items-center gap-2"><div className={`w-3 h-3 rounded-full border border-slate-500 ${p?(p==='expert'?'bg-amber-500 border-amber-500':'bg-white border-white'):''}`}></div><span className={`text-sm ${p?'text-white':'text-slate-400'}`}>{s.label}</span></div>
+                                                <span className="text-sm font-mono font-bold text-slate-300">{formatMod(tot)}</span>
+                                            </div>
+                                        )
+                                    })}
                                 </div>
                             </div>
+
                             <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 flex-none">
-                                <h3 className="font-bold text-slate-300 mb-3 flex items-center gap-2 text-sm uppercase tracking-wider"><Coins size={16} /> Bourse</h3>
                                 <div className="grid grid-cols-4 gap-2">
-                                    <CoinInput label="PP" type="pp" color="text-indigo-300" coins={char.coins} updateChar={updateChar} />
-                                    <CoinInput label="PO" type="gp" color="text-amber-400" coins={char.coins} updateChar={updateChar} />
-                                    <CoinInput label="PA" type="sp" color="text-slate-300" coins={char.coins} updateChar={updateChar} />
-                                    <CoinInput label="PC" type="cp" color="text-orange-700" coins={char.coins} updateChar={updateChar} />
-                                </div>
-                            </div>
-                            
-                            <div className="flex flex-col gap-4">
-                                {/* 1. Langues Maitrisées (Libellé Changé) */}
-                                <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
-                                    <h3 className="font-bold text-slate-300 mb-2 flex items-center gap-2 text-sm uppercase tracking-wider"><MessageSquare size={16} /> Langues Maîtrisées</h3>
-                                    <textarea className="w-full bg-slate-900/50 text-slate-300 text-sm p-2 rounded border border-slate-700 focus:border-amber-500/50 outline-none resize-none h-24" value={char.languages} onChange={(e) => updateChar('languages', e.target.value)} placeholder="Elfique, Nain, Commun..." />
-                                </div>
-
-                                {/* 2. Inventaire Tableau (Avec Tri) */}
-                                <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 flex-1">
-                                    <div className="flex justify-between items-center mb-3">
-                                        <h3 className="font-bold text-slate-300 flex items-center gap-2 text-sm uppercase tracking-wider"><Backpack size={16} /> Inventaire</h3>
-                                        <button onClick={addInventoryItem} className="text-xs bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded transition">+ Ajouter</button>
-                                    </div>
-                                    <div className="text-xs text-slate-500 flex px-2 mb-1 uppercase font-bold tracking-wider">
-                                        <span className="w-5 mr-1"></span>
-                                        <span className="flex-1">Objet</span>
-                                        <span className="w-12 text-center mr-6">Qté</span>
-                                    </div>
-                                    <div className="space-y-1">
-                                        {Array.isArray(char.inventory) && char.inventory.map((item, i) => (
-                                            <InventoryRow key={item.id || i} item={item} index={i} updateChar={updateChar} inventoryList={char.inventory} moveInventory={(idx, dir) => moveItem('inventory', idx, dir)} />
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 h-48 flex flex-col">
-                                    <h3 className="font-bold text-slate-300 mb-2 flex items-center gap-2 text-sm uppercase tracking-wider"><Scroll size={16} /> Autres Notes</h3>
-                                    <textarea className="flex-1 w-full bg-slate-900/50 text-slate-300 text-sm p-2 rounded border border-slate-700 focus:border-amber-500/50 outline-none resize-none" value={char.notes} onChange={(e) => updateChar('notes', e.target.value)} placeholder="Background, alliés, quêtes..." />
+                                    {['pp','gp','sp','cp'].map(c => <div key={c} className="bg-slate-900/50 rounded p-2 flex flex-col items-center border border-slate-700/50"><label className="text-xs font-bold mb-1 uppercase text-slate-400">{c}</label><input type="number" value={char.coins[c]} onChange={(e)=>updateChar(`coins.${c}`,parseInt(e.target.value)||0)} className="bg-transparent text-center text-white font-mono w-full outline-none" /></div>)}
                                 </div>
                             </div>
 
+                            <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
+                                <h3 className="font-bold text-slate-300 mb-2 flex items-center gap-2 text-sm uppercase tracking-wider"><MessageSquare size={16} /> Langues Maîtrisées</h3>
+                                <textarea className="w-full bg-slate-900/50 text-slate-300 text-sm p-2 rounded border border-slate-700 focus:border-amber-500/50 outline-none resize-none h-24" value={char.languages} onChange={(e) => updateChar('languages', e.target.value)} placeholder="Langues..." />
+                            </div>
+
+                            <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 flex-1">
+                                <div className="flex justify-between items-center mb-3"><h3 className="font-bold text-slate-300 flex items-center gap-2 text-sm uppercase tracking-wider"><Backpack size={16} /> Inventaire</h3><button onClick={() => updateChar('inventory', [...char.inventory, { id: Date.now(), name: "Objet", qty: 1 }])} className="text-xs bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded transition">+ Ajouter</button></div>
+                                <div className="space-y-1">{char.inventory.map((item, i) => <InventoryRow key={item.id || i} item={item} index={i} updateChar={updateChar} inventoryList={char.inventory} moveInventory={(idx, d) => moveItem('inventory', idx, d)} />)}</div>
+                            </div>
+
+                            <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 h-48 flex flex-col">
+                                <h3 className="font-bold text-slate-300 mb-2 flex items-center gap-2 text-sm uppercase tracking-wider"><Scroll size={16} /> Autres Notes</h3>
+                                <textarea className="flex-1 w-full bg-slate-900/50 text-slate-300 text-sm p-2 rounded border border-slate-700 focus:border-amber-500/50 outline-none resize-none" value={char.notes} onChange={(e) => updateChar('notes', e.target.value)} placeholder="Notes..." />
+                            </div>
                         </div>
                     </main>
+
                     <footer className="bg-slate-900 border-t border-slate-800 p-4 sticky bottom-0 z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.3)]">
                         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-slate-500">
                             <span>D&D 5e (2024 Revision) - Standalone</span>
@@ -604,8 +363,86 @@
             );
         };
 
+        // --- 5. COMPOSANT PRINCIPAL APP (Le Manager) ---
+        const App = () => {
+            const [profiles, setProfiles] = useState([]);
+            const [activeId, setActiveId] = useState(null);
+
+            useEffect(() => {
+                const storedIndex = localStorage.getItem('dnd2024-index');
+                let index = storedIndex ? JSON.parse(storedIndex) : [];
+                if (index.length === 0) {
+                    const newId = 'char-' + Date.now();
+                    index = [{ id: newId, name: "Nouveau Personnage" }];
+                    localStorage.setItem('dnd2024-index', JSON.stringify(index));
+                }
+                setProfiles(index);
+                setActiveId(localStorage.getItem('dnd2024-active-id') || index[0].id);
+            }, []);
+
+            const handleSwitch = (id) => {
+                setActiveId(id);
+                localStorage.setItem('dnd2024-active-id', id);
+            };
+
+            const handleCreate = () => {
+                const newId = 'char-' + Date.now();
+                const newProfiles = [...profiles, { id: newId, name: "Nouveau Personnage" }];
+                localStorage.setItem('dnd2024-index', JSON.stringify(newProfiles));
+                setProfiles(newProfiles);
+                handleSwitch(newId);
+            };
+
+            const handleDelete = () => {
+                if (profiles.length <= 1) return alert("Impossible de supprimer le dernier perso !");
+                if (!confirm("Supprimer ce personnage ?")) return;
+                const newProfiles = profiles.filter(p => p.id !== activeId);
+                localStorage.removeItem(`dnd2024-data-${activeId}`);
+                localStorage.setItem('dnd2024-index', JSON.stringify(newProfiles));
+                setProfiles(newProfiles);
+                handleSwitch(newProfiles[0].id);
+            };
+
+            // Fonction passée à l'enfant pour mettre à jour le nom dans la liste
+            const updateProfileName = (id, name) => {
+                setProfiles(prev => {
+                    const p = prev.find(x => x.id === id);
+                    if (p && p.name !== name) {
+                        const newIndex = prev.map(x => x.id === id ? { ...x, name } : x);
+                        localStorage.setItem('dnd2024-index', JSON.stringify(newIndex));
+                        return newIndex;
+                    }
+                    return prev;
+                });
+            };
+
+            if (!activeId) return null;
+
+            return (
+                <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-amber-500/30 flex flex-col">
+                    <div className="bg-slate-950 border-b border-slate-800 py-2 px-4 flex flex-col sm:flex-row justify-between items-center gap-3 print:hidden">
+                        <div className="flex items-center gap-3 w-full sm:w-auto">
+                            <div className="flex items-center gap-2 text-amber-500 font-bold uppercase text-xs tracking-widest"><Users size={16} /> Profils</div>
+                            <select value={activeId} onChange={(e) => handleSwitch(e.target.value)} className="bg-slate-900 text-white text-sm border border-slate-700 rounded px-2 py-1 outline-none focus:border-amber-500 flex-1 sm:w-64">
+                                {profiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                            </select>
+                        </div>
+                        <div className="flex gap-2">
+                            <button onClick={handleCreate} className="flex items-center gap-1 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 text-xs px-3 py-1.5 rounded border border-emerald-600/50 transition"><Plus size={14} /> Nouveau</button>
+                            <button onClick={handleDelete} className="flex items-center gap-1 bg-red-600/20 hover:bg-red-600/40 text-red-400 text-xs px-3 py-1.5 rounded border border-red-600/50 transition"><Trash2 size={14} /> Supprimer</button>
+                        </div>
+                    </div>
+                    
+                    {/* KEY PROP MAGIQUE : Force la destruction et recréation du composant quand l'ID change */}
+                    <ErrorBoundary key={activeId} charId={activeId}>
+                        <CharacterSheet characterId={activeId} updateProfileName={updateProfileName} />
+                    </ErrorBoundary>
+                </div>
+            );
+        };
+
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<CharacterSheet />);
+        root.render(<App />);
     </script>
 </body>
 </html>
