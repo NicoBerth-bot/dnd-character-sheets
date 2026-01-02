@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>D&D 5e - Groupe En Ligne (Europe)</title>
+    <title>D&D 5e - Édition Modulaire</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
@@ -19,6 +19,10 @@
         input[type=number]::-webkit-inner-spin-button, 
         input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         .loading-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(2,6,23,0.9); z-index:9999; display:flex; justify-content:center; align-items:center; color:white; }
+        
+        /* Animation pour le mode édition */
+        .edit-mode-block { border: 2px dashed #f59e0b; position: relative; }
+        .widget-controls { position: absolute; top: -10px; right: -5px; background: #0f172a; border: 1px solid #f59e0b; border-radius: 4px; display: flex; z-index: 50; padding: 2px; }
     </style>
 </head>
 <body>
@@ -55,7 +59,7 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // --- ICONES (Ajout de Eye) ---
+        // --- ICONES ---
         const IconBase = ({ size = 18, className = "", children }) => (<svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{children}</svg>);
         const Shield = (p) => <IconBase {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></IconBase>;
         const Heart = (p) => <IconBase {...p}><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></IconBase>;
@@ -68,6 +72,8 @@
         const Coins = (p) => <IconBase {...p}><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></IconBase>;
         const ChevronDown = (p) => <IconBase {...p}><path d="m6 9 6 6 6-6"/></IconBase>;
         const ChevronUp = (p) => <IconBase {...p}><path d="m18 15-6-6-6 6"/></IconBase>;
+        const ChevronLeft = (p) => <IconBase {...p}><path d="m15 18-6-6 6-6"/></IconBase>;
+        const ChevronRight = (p) => <IconBase {...p}><path d="m9 18 6-6-6-6"/></IconBase>;
         const Plus = (p) => <IconBase {...p}><path d="M5 12h14"/><path d="M12 5v14"/></IconBase>;
         const Camera = (p) => <IconBase {...p}><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></IconBase>;
         const Download = (p) => <IconBase {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></IconBase>;
@@ -78,6 +84,7 @@
         const AlertTriangle = (p) => <IconBase {...p}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></IconBase>;
         const Wifi = (p) => <IconBase {...p}><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></IconBase>;
         const Eye = (p) => <IconBase {...p}><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></IconBase>;
+        const LayoutIcon = (p) => <IconBase {...p}><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><path d="M3 9h18"/><path d="M9 21V9"/></IconBase>;
 
         const getModifier = (s) => Math.floor((s - 10) / 2);
         const getProficiencyBonus = (l) => Math.ceil(l / 4) + 1;
@@ -105,6 +112,7 @@
             }
         }
 
+        // --- PETITS COMPOSANTS DE LIGNES (Attaques, Items, Traits) ---
         const FeatureRow = ({ feature, index, updateChar, featuresList, moveFeature }) => {
             const [expanded, setExpanded] = useState(false);
             const isLong = feature.description.length > 60;
@@ -126,7 +134,6 @@
                 </div>
             );
         };
-
         const InventoryRow = ({ item, index, updateChar, inventoryList, moveInventory }) => {
             const update = (f, v) => { const n = [...inventoryList]; n[index][f] = v; updateChar('inventory', n); };
             return (
@@ -138,7 +145,6 @@
                 </div>
             )
         };
-
         const AttackRow = ({ attack, index, updateChar, attacksList, moveAttack }) => {
             const update = (f, v) => { const n = [...attacksList]; n[index][f] = v; updateChar('attacks', n); };
             return (
@@ -156,8 +162,136 @@
             );
         };
 
+        // --- WRAPPER POUR RENDRE UN BLOC DEPLAÇABLE ---
+        const WidgetWrapper = ({ id, colIndex, isEditing, moveWidget, children }) => {
+            if (!isEditing) return <div className="mb-6">{children}</div>;
+            return (
+                <div className="edit-mode-block mb-6 rounded-lg">
+                    <div className="widget-controls">
+                        <button onClick={() => moveWidget(id, colIndex, 'left')} className="p-1 hover:bg-slate-800 hover:text-amber-400"><ChevronLeft size={16} /></button>
+                        <button onClick={() => moveWidget(id, colIndex, 'up')} className="p-1 hover:bg-slate-800 hover:text-amber-400"><ChevronUp size={16} /></button>
+                        <button onClick={() => moveWidget(id, colIndex, 'down')} className="p-1 hover:bg-slate-800 hover:text-amber-400"><ChevronDown size={16} /></button>
+                        <button onClick={() => moveWidget(id, colIndex, 'right')} className="p-1 hover:bg-slate-800 hover:text-amber-400"><ChevronRight size={16} /></button>
+                    </div>
+                    {children}
+                </div>
+            );
+        };
+
+        // --- WIDGETS (BLOCS DE CONTENU) ---
+        const WidgetStats = ({ char, updateChar, profBonus }) => {
+            const statsConfig = [{key:'str',label:'Force'},{key:'dex',label:'Dextérité'},{key:'con',label:'Constitution'},{key:'int',label:'Intelligence'},{key:'wis',label:'Sagesse'},{key:'cha',label:'Charisme'}];
+            return (
+                <div className="grid grid-cols-3 md:grid-cols-1 gap-4">
+                    {statsConfig.map(c => {
+                        const mod = getModifier(char.stats[c.key]);
+                        const isProf = char.saves[c.key];
+                        return (
+                            <div key={c.key} className="bg-slate-800 rounded-lg p-3 flex flex-col items-center relative border border-slate-700 shadow-md">
+                                <span className="text-xs text-slate-400 uppercase tracking-widest font-bold mb-1">{c.label}</span>
+                                <div className="flex items-center gap-2">
+                                    <button onClick={() => updateChar(`stats.${c.key}`, char.stats[c.key]-1)} className="text-slate-500 hover:text-white">-</button>
+                                    <span className="text-2xl font-bold text-white">{char.stats[c.key]}</span>
+                                    <button onClick={() => updateChar(`stats.${c.key}`, char.stats[c.key]+1)} className="text-slate-500 hover:text-white">+</button>
+                                </div>
+                                <div className="bg-amber-600 text-white font-bold rounded-full w-10 h-10 flex items-center justify-center -mb-6 border-4 border-slate-900 z-10 shadow-lg">{formatMod(mod)}</div>
+                                <div onClick={()=>{const n={...char.saves}; n[c.key]=!n[c.key]; updateChar('saves',n)}} className={`mt-6 text-xs flex items-center gap-1 cursor-pointer select-none px-2 py-1 rounded ${isProf ? 'bg-indigo-900/50 text-indigo-200' : 'text-slate-500 hover:text-slate-300'}`}>
+                                    <Shield size={10} className={isProf ? "fill-current" : ""} /><span>Sv: {formatMod(mod + (isProf?profBonus:0))}</span>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            );
+        };
+
+        const WidgetCombatStats = ({ char, updateChar, passivePerception }) => (
+            <div className="grid grid-cols-2 gap-4">
+                <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 flex flex-col items-center justify-center relative"><Shield className="absolute text-slate-700/20 w-16 h-16 -bottom-4 -right-4" /><span className="text-xs text-slate-400 uppercase font-bold">CA</span><input type="number" value={char.ac} onChange={(e) => updateChar('ac', parseInt(e.target.value) || 10)} className="bg-transparent text-3xl font-bold text-white text-center w-full outline-none z-10" /></div>
+                <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 flex flex-col items-center justify-center"><span className="text-xs text-slate-400 uppercase font-bold">Init</span><div className="text-3xl font-bold text-amber-400">{formatMod(getModifier(char.stats.dex) + (char.initiativeBonus || 0))}</div></div>
+                <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 flex flex-col items-center justify-center"><span className="text-xs text-slate-400 uppercase font-bold">Vitesse</span><div className="flex items-baseline"><input type="number" value={char.speed} onChange={(e) => updateChar('speed', parseInt(e.target.value) || 30)} className="bg-transparent text-3xl font-bold text-white text-center w-12 outline-none" /><span className="text-xs text-slate-500">ft</span></div></div>
+                <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 flex flex-col items-center justify-center relative overflow-hidden"><div className="absolute -right-3 -top-3 text-slate-700/20"><Eye size={48} /></div><span className="text-xs text-slate-400 uppercase font-bold text-center leading-tight">Perception<br/>Passive</span><div className="text-3xl font-bold text-white z-10">{passivePerception}</div></div>
+            </div>
+        );
+
+        const WidgetHP = ({ char, updateChar }) => (
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 relative overflow-hidden">
+                <div className="flex justify-between items-end mb-2 relative z-10"><label className="text-slate-400 text-sm font-bold uppercase flex items-center gap-2"><Heart className="text-red-500 fill-current" size={16} /> Points de Vie</label><div className="flex items-center gap-1 text-sm text-slate-500">Max: <input type="number" value={char.hp.max} onChange={(e) => updateChar('hp.max', parseInt(e.target.value) || 0)} className="bg-slate-900 text-slate-300 w-12 text-center rounded border border-slate-700 p-0.5" /></div></div>
+                <div className="flex items-center gap-4 relative z-10"><button onClick={() => updateChar('hp.current', char.hp.current - 1)} className="bg-red-900/30 hover:bg-red-900/50 text-red-200 w-10 h-10 rounded-full flex items-center justify-center border border-red-900">-</button><input type="number" value={char.hp.current} onChange={(e) => updateChar('hp.current', parseInt(e.target.value) || 0)} className={`bg-transparent text-5xl font-bold text-center w-full outline-none ${char.hp.current <= (char.hp.max/2) ? 'text-red-400' : 'text-white'}`} /><button onClick={() => updateChar('hp.current', char.hp.current + 1)} className="bg-green-900/30 hover:bg-green-900/50 text-green-200 w-10 h-10 rounded-full flex items-center justify-center border border-green-900">+</button></div>
+                <div className="absolute bottom-0 left-0 h-1 bg-slate-700 w-full"><div className="h-full bg-gradient-to-r from-red-600 to-amber-600 transition-all duration-500" style={{ width: `${Math.min((char.hp.current / char.hp.max) * 100, 100)}%` }}></div></div>
+            </div>
+        );
+
+        const WidgetAttacks = ({ char, updateChar, moveItem }) => (
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
+                <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-slate-300 flex items-center gap-2"><Sword size={18} /> Attaques</h3><button onClick={() => updateChar('attacks', [...char.attacks, { id: Date.now(), name: "Arme", bonus: "+0", damage: "1d6" }])} className="text-xs bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded transition">+ Ajouter</button></div>
+                <div>{char.attacks.map((atk, i) => <AttackRow key={atk.id || i} attack={atk} index={i} updateChar={updateChar} attacksList={char.attacks} moveAttack={(idx, d) => moveItem('attacks', idx, d)} />)}</div>
+                <div className="mt-6 pt-4 border-t border-slate-700">
+                    <div className="flex justify-between items-center mb-2"><h3 className="font-bold text-slate-300 flex items-center gap-2 text-sm uppercase tracking-wider"><Zap size={16} /> Capacités & Traits</h3><button onClick={() => updateChar('features', [...char.features, { id: Date.now(), name: "Nouveau Trait", description: "" }])} className="text-xs bg-amber-600/20 hover:bg-amber-600/40 text-amber-400 px-2 py-1 rounded transition"><Plus size={12} /> Trait</button></div>
+                    <div className="space-y-1">{char.features.map((feat, i) => <FeatureRow key={feat.id || i} feature={feat} index={i} updateChar={updateChar} featuresList={char.features} moveFeature={(idx, d) => moveItem('features', idx, d)} />)}</div>
+                </div>
+            </div>
+        );
+
+        const WidgetSkills = ({ char, updateChar, profBonus }) => {
+            const skillsList = [ {key:'acrobatics',label:'Acrobaties',stat:'dex'},{key:'animal_handling',label:'Dressage',stat:'wis'},{key:'arcana',label:'Arcanes',stat:'int'},{key:'athletics',label:'Athlétisme',stat:'str'},{key:'deception',label:'Tromperie',stat:'cha'},{key:'history',label:'Histoire',stat:'int'},{key:'insight',label:'Intuition',stat:'wis'},{key:'intimidation',label:'Intimidation',stat:'cha'},{key:'investigation',label:'Investigation',stat:'int'},{key:'medicine',label:'Médecine',stat:'wis'},{key:'nature',label:'Nature',stat:'int'},{key:'perception',label:'Perception',stat:'wis'},{key:'performance',label:'Représentation',stat:'cha'},{key:'persuasion',label:'Persuasion',stat:'cha'},{key:'religion',label:'Religion',stat:'int'},{key:'sleight_of_hand',label:'Escamotage',stat:'dex'},{key:'stealth',label:'Discrétion',stat:'dex'},{key:'survival',label:'Survie',stat:'wis'} ];
+            return (
+                <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 flex-none">
+                    <h3 className="font-bold text-slate-300 mb-3 flex items-center gap-2 text-sm uppercase tracking-wider"><User size={16} /> Compétences</h3>
+                    <div className="space-y-0.5 divide-y divide-slate-700/50">
+                        {skillsList.map(s => {
+                            const p = char.skills[s.key];
+                            const tot = getModifier(char.stats[s.stat]) + (p===true?profBonus:p==='expert'?profBonus*2:0);
+                            return (
+                                <div key={s.key} className="flex items-center justify-between p-2 hover:bg-slate-800 rounded cursor-pointer group" onClick={()=>{const n={...char.skills}; n[s.key]=!p?true:(p===true?'expert':false); updateChar('skills',n)}}>
+                                    <div className="flex items-center gap-2"><div className={`w-3 h-3 rounded-full border border-slate-500 ${p?(p==='expert'?'bg-amber-500 border-amber-500':'bg-white border-white'):''}`}></div><span className={`text-sm ${p?'text-white':'text-slate-400'}`}>{s.label}</span></div>
+                                    <span className="text-sm font-mono font-bold text-slate-300">{formatMod(tot)}</span>
+                                </div>
+                            )
+                        })}
+                    </div>
+                </div>
+            );
+        };
+
+        const WidgetCoins = ({ char, updateChar }) => (
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 flex-none">
+                <div className="grid grid-cols-4 gap-2">
+                    {['pp','gp','sp','cp'].map(c => <div key={c} className="bg-slate-900/50 rounded p-2 flex flex-col items-center border border-slate-700/50"><label className="text-xs font-bold mb-1 uppercase text-slate-400">{c}</label><input type="number" value={char.coins[c]} onChange={(e)=>updateChar(`coins.${c}`,parseInt(e.target.value)||0)} className="bg-transparent text-center text-white font-mono w-full outline-none" /></div>)}
+                </div>
+            </div>
+        );
+
+        const WidgetLanguages = ({ char, updateChar }) => (
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
+                <h3 className="font-bold text-slate-300 mb-2 flex items-center gap-2 text-sm uppercase tracking-wider"><MessageSquare size={16} /> Langues Maîtrisées</h3>
+                <textarea className="w-full bg-slate-900/50 text-slate-300 text-sm p-2 rounded border border-slate-700 focus:border-amber-500/50 outline-none resize-none h-24" value={char.languages} onChange={(e) => updateChar('languages', e.target.value)} placeholder="Langues..." />
+            </div>
+        );
+
+        const WidgetInventory = ({ char, updateChar, moveItem }) => (
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 flex-1">
+                <div className="flex justify-between items-center mb-3"><h3 className="font-bold text-slate-300 flex items-center gap-2 text-sm uppercase tracking-wider"><Backpack size={16} /> Inventaire</h3><button onClick={() => updateChar('inventory', [...char.inventory, { id: Date.now(), name: "Objet", qty: 1 }])} className="text-xs bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded transition">+ Ajouter</button></div>
+                <div className="space-y-1">{char.inventory.map((item, i) => <InventoryRow key={item.id || i} item={item} index={i} updateChar={updateChar} inventoryList={char.inventory} moveInventory={(idx, d) => moveItem('inventory', idx, d)} />)}</div>
+            </div>
+        );
+
+        const WidgetNotes = ({ char, updateChar }) => (
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 h-48 flex flex-col">
+                <h3 className="font-bold text-slate-300 mb-2 flex items-center gap-2 text-sm uppercase tracking-wider"><Scroll size={16} /> Autres Notes</h3>
+                <textarea className="flex-1 w-full bg-slate-900/50 text-slate-300 text-sm p-2 rounded border border-slate-700 focus:border-amber-500/50 outline-none resize-none" value={char.notes} onChange={(e) => updateChar('notes', e.target.value)} placeholder="Notes..." />
+            </div>
+        );
+
         // --- COMPOSANT FICHE CONNECTÉE ---
         const CharacterSheet = ({ characterId, updateProfileName }) => {
+            // Configuration par défaut des colonnes
+            const defaultLayout = {
+                col1: ['stats'],
+                col2: ['combat_stats', 'hp', 'attacks'],
+                col3: ['skills', 'coins', 'languages', 'inventory', 'notes']
+            };
+
             const initialCharacter = {
                 name: "Nouveau Personnage", class: "Classe", level: 1, species: "Espèce", background: "Historique", alignment: "",
                 xp: 0, heroicInspiration: false, image: null, 
@@ -165,10 +299,12 @@
                 hp: { current: 10, max: 10, temp: 0 }, ac: 10, speed: 30, initiativeBonus: 0,
                 skills: {}, saves: {}, coins: { cp: 0, sp: 0, gp: 0, pp: 0 },
                 attacks: [ { id: 1, name: "Attaque de base", bonus: "+2", damage: "1d6" } ],
-                features: [], languages: "", inventory: [], notes: ""
+                features: [], languages: "", inventory: [], notes: "",
+                layout: defaultLayout
             };
 
             const [char, setChar] = useState(null);
+            const [isEditingLayout, setIsEditingLayout] = useState(false);
             const fileInputRef = useRef(null);
             const importInputRef = useRef(null);
             const isLocalUpdate = useRef(false);
@@ -190,6 +326,7 @@
                                 attacks: Array.isArray(data.attacks) ? data.attacks : [],
                                 features: Array.isArray(data.features) ? data.features : [],
                                 inventory: Array.isArray(data.inventory) ? data.inventory : [],
+                                layout: data.layout || defaultLayout // Fallback pour les vieux persos
                             };
                             setChar(safeChar);
                         }
@@ -212,11 +349,7 @@
                     
                     isLocalUpdate.current = true;
                     window.fbSet(window.fbRef(window.fbDB, `dnd_app/chars/${characterId}`), newData);
-
-                    if (path === 'name') {
-                        updateProfileName(characterId, value);
-                    }
-
+                    if (path === 'name') updateProfileName(characterId, value);
                     return newData;
                 });
             };
@@ -227,6 +360,44 @@
                     if (direction === -1 && index > 0) [list[index], list[index-1]] = [list[index-1], list[index]];
                     else if (direction === 1 && index < list.length -1) [list[index], list[index+1]] = [list[index+1], list[index]];
                     const newData = { ...prev, [listKey]: list };
+                    isLocalUpdate.current = true;
+                    window.fbSet(window.fbRef(window.fbDB, `dnd_app/chars/${characterId}`), newData);
+                    return newData;
+                });
+            };
+
+            // --- LOGIQUE DE DEPLACEMENT DES WIDGETS ---
+            const moveWidget = (widgetId, fromColKey, direction) => {
+                setChar(prev => {
+                    const layout = { ...prev.layout };
+                    const colKeys = ['col1', 'col2', 'col3'];
+                    const currentList = [...layout[fromColKey]];
+                    const index = currentList.indexOf(widgetId);
+                    
+                    if (direction === 'up' && index > 0) {
+                        [currentList[index], currentList[index-1]] = [currentList[index-1], currentList[index]];
+                        layout[fromColKey] = currentList;
+                    } 
+                    else if (direction === 'down' && index < currentList.length - 1) {
+                        [currentList[index], currentList[index+1]] = [currentList[index+1], currentList[index]];
+                        layout[fromColKey] = currentList;
+                    }
+                    else if (direction === 'left' || direction === 'right') {
+                        // Déplacement entre colonnes
+                        const colIdx = colKeys.indexOf(fromColKey);
+                        const targetColIdx = direction === 'left' ? colIdx - 1 : colIdx + 1;
+                        
+                        if (targetColIdx >= 0 && targetColIdx < 3) {
+                            const targetColKey = colKeys[targetColIdx];
+                            // Retirer de la source
+                            currentList.splice(index, 1);
+                            layout[fromColKey] = currentList;
+                            // Ajouter à la cible
+                            layout[targetColKey] = [...layout[targetColKey], widgetId];
+                        }
+                    }
+
+                    const newData = { ...prev, layout };
                     isLocalUpdate.current = true;
                     window.fbSet(window.fbRef(window.fbDB, `dnd_app/chars/${characterId}`), newData);
                     return newData;
@@ -260,13 +431,25 @@
             if (!char) return <div className="text-slate-500 p-10 text-center animate-pulse flex flex-col items-center gap-2"><Wifi className="animate-bounce"/> Connexion au grimoire...</div>;
 
             const profBonus = getProficiencyBonus(char.level);
-            // CALCUL DE LA PERCEPTION PASSIVE
             const wisMod = getModifier(char.stats.wis);
-            const perceptionSkill = char.skills.perception; // undefined, true, 'expert'
+            const perceptionSkill = char.skills.perception; 
             const passivePerception = 10 + wisMod + (perceptionSkill === true ? profBonus : perceptionSkill === 'expert' ? profBonus * 2 : 0);
 
-            const statsConfig = [{key:'str',label:'Force'},{key:'dex',label:'Dextérité'},{key:'con',label:'Constitution'},{key:'int',label:'Intelligence'},{key:'wis',label:'Sagesse'},{key:'cha',label:'Charisme'}];
-            const skillsList = [ {key:'acrobatics',label:'Acrobaties',stat:'dex'},{key:'animal_handling',label:'Dressage',stat:'wis'},{key:'arcana',label:'Arcanes',stat:'int'},{key:'athletics',label:'Athlétisme',stat:'str'},{key:'deception',label:'Tromperie',stat:'cha'},{key:'history',label:'Histoire',stat:'int'},{key:'insight',label:'Intuition',stat:'wis'},{key:'intimidation',label:'Intimidation',stat:'cha'},{key:'investigation',label:'Investigation',stat:'int'},{key:'medicine',label:'Médecine',stat:'wis'},{key:'nature',label:'Nature',stat:'int'},{key:'perception',label:'Perception',stat:'wis'},{key:'performance',label:'Représentation',stat:'cha'},{key:'persuasion',label:'Persuasion',stat:'cha'},{key:'religion',label:'Religion',stat:'int'},{key:'sleight_of_hand',label:'Escamotage',stat:'dex'},{key:'stealth',label:'Discrétion',stat:'dex'},{key:'survival',label:'Survie',stat:'wis'} ];
+            // REGISTRE DES WIDGETS
+            const renderWidget = (id) => {
+                switch(id) {
+                    case 'stats': return <WidgetStats char={char} updateChar={updateChar} profBonus={profBonus} />;
+                    case 'combat_stats': return <WidgetCombatStats char={char} updateChar={updateChar} passivePerception={passivePerception} />;
+                    case 'hp': return <WidgetHP char={char} updateChar={updateChar} />;
+                    case 'attacks': return <WidgetAttacks char={char} updateChar={updateChar} moveItem={moveItem} />;
+                    case 'skills': return <WidgetSkills char={char} updateChar={updateChar} profBonus={profBonus} />;
+                    case 'coins': return <WidgetCoins char={char} updateChar={updateChar} />;
+                    case 'languages': return <WidgetLanguages char={char} updateChar={updateChar} />;
+                    case 'inventory': return <WidgetInventory char={char} updateChar={updateChar} moveItem={moveItem} />;
+                    case 'notes': return <WidgetNotes char={char} updateChar={updateChar} />;
+                    default: return null;
+                }
+            };
 
             return (
                 <div className="animate-in fade-in duration-300">
@@ -286,104 +469,48 @@
                                     <input value={char.alignment} onChange={(e) => updateChar('alignment', e.target.value)} className="bg-slate-800/50 rounded px-2 py-0.5 outline-none hover:bg-slate-800 focus:text-amber-400 w-32" placeholder="Alignement" />
                                 </div>
                             </div>
-                            <div className="flex items-center gap-4 bg-slate-800 p-2 rounded-lg border border-slate-700 shrink-0">
-                                <div className="text-center px-2"><div className="text-xs text-slate-400 uppercase">Maîtrise</div><div className="text-xl font-bold text-amber-400">+{profBonus}</div></div>
-                                <div className="w-px h-8 bg-slate-700"></div>
-                                <div className="flex items-center gap-2 cursor-pointer" onClick={() => updateChar('heroicInspiration', !char.heroicInspiration)}><Dice5 size={24} className={char.heroicInspiration ? "text-amber-400 animate-pulse" : "text-slate-600"} /><div className="flex flex-col"><span className="text-xs text-slate-400 uppercase leading-none">Inspiration</span></div></div>
+                            <div className="flex flex-col items-end gap-2">
+                                <div className="flex items-center gap-4 bg-slate-800 p-2 rounded-lg border border-slate-700 shrink-0">
+                                    <div className="text-center px-2"><div className="text-xs text-slate-400 uppercase">Maîtrise</div><div className="text-xl font-bold text-amber-400">+{profBonus}</div></div>
+                                    <div className="w-px h-8 bg-slate-700"></div>
+                                    <div className="flex items-center gap-2 cursor-pointer" onClick={() => updateChar('heroicInspiration', !char.heroicInspiration)}><Dice5 size={24} className={char.heroicInspiration ? "text-amber-400 animate-pulse" : "text-slate-600"} /><div className="flex flex-col"><span className="text-xs text-slate-400 uppercase leading-none">Inspiration</span></div></div>
+                                </div>
+                                <button 
+                                    onClick={() => setIsEditingLayout(!isEditingLayout)} 
+                                    className={`text-xs px-2 py-1 rounded border flex items-center gap-1 transition ${isEditingLayout ? 'bg-amber-600 border-amber-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'}`}
+                                >
+                                    <LayoutIcon size={12} /> {isEditingLayout ? 'Fin Édition' : 'Organiser'}
+                                </button>
                             </div>
                         </div>
                     </header>
 
                     <main className="max-w-6xl mx-auto p-4 grid grid-cols-1 md:grid-cols-12 gap-6 flex-1 w-full">
-                        <div className="md:col-span-3 lg:col-span-2 grid grid-cols-3 md:grid-cols-1 gap-4 h-fit">
-                            {statsConfig.map(c => {
-                                const mod = getModifier(char.stats[c.key]);
-                                const isProf = char.saves[c.key];
-                                return (
-                                    <div key={c.key} className="bg-slate-800 rounded-lg p-3 flex flex-col items-center relative border border-slate-700 shadow-md">
-                                        <span className="text-xs text-slate-400 uppercase tracking-widest font-bold mb-1">{c.label}</span>
-                                        <div className="flex items-center gap-2">
-                                            <button onClick={() => updateChar(`stats.${c.key}`, char.stats[c.key]-1)} className="text-slate-500 hover:text-white">-</button>
-                                            <span className="text-2xl font-bold text-white">{char.stats[c.key]}</span>
-                                            <button onClick={() => updateChar(`stats.${c.key}`, char.stats[c.key]+1)} className="text-slate-500 hover:text-white">+</button>
-                                        </div>
-                                        <div className="bg-amber-600 text-white font-bold rounded-full w-10 h-10 flex items-center justify-center -mb-6 border-4 border-slate-900 z-10 shadow-lg">{formatMod(mod)}</div>
-                                        <div onClick={()=>{const n={...char.saves}; n[c.key]=!n[c.key]; updateChar('saves',n)}} className={`mt-6 text-xs flex items-center gap-1 cursor-pointer select-none px-2 py-1 rounded ${isProf ? 'bg-indigo-900/50 text-indigo-200' : 'text-slate-500 hover:text-slate-300'}`}>
-                                            <Shield size={10} className={isProf ? "fill-current" : ""} /><span>Sv: {formatMod(mod + (isProf?profBonus:0))}</span>
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                        {/* COLONNE 1 */}
+                        <div className="md:col-span-3 lg:col-span-2 flex flex-col gap-0">
+                            {char.layout.col1.map(widgetId => (
+                                <WidgetWrapper key={widgetId} id={widgetId} colIndex="col1" isEditing={isEditingLayout} moveWidget={moveWidget}>
+                                    {renderWidget(widgetId)}
+                                </WidgetWrapper>
+                            ))}
                         </div>
 
-                        <div className="md:col-span-5 lg:col-span-6 space-y-6">
-                            {/* GRILLE MODIFIÉE : 2 COLONNES SUR MOBILE, 4 SUR BUREAU */}
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 flex flex-col items-center justify-center relative"><Shield className="absolute text-slate-700/20 w-16 h-16 -bottom-4 -right-4" /><span className="text-xs text-slate-400 uppercase font-bold">CA</span><input type="number" value={char.ac} onChange={(e) => updateChar('ac', parseInt(e.target.value) || 10)} className="bg-transparent text-3xl font-bold text-white text-center w-full outline-none z-10" /></div>
-                                <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 flex flex-col items-center justify-center"><span className="text-xs text-slate-400 uppercase font-bold">Init</span><div className="text-3xl font-bold text-amber-400">{formatMod(getModifier(char.stats.dex) + (char.initiativeBonus || 0))}</div></div>
-                                <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 flex flex-col items-center justify-center"><span className="text-xs text-slate-400 uppercase font-bold">Vitesse</span><div className="flex items-baseline"><input type="number" value={char.speed} onChange={(e) => updateChar('speed', parseInt(e.target.value) || 30)} className="bg-transparent text-3xl font-bold text-white text-center w-12 outline-none" /><span className="text-xs text-slate-500">ft</span></div></div>
-                                
-                                {/* NOUVELLE CASE : PERCEPTION PASSIVE */}
-                                <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 flex flex-col items-center justify-center relative overflow-hidden">
-                                     <div className="absolute -right-3 -top-3 text-slate-700/20"><Eye size={48} /></div>
-                                     <span className="text-xs text-slate-400 uppercase font-bold text-center leading-tight">Perception<br/>Passive</span>
-                                     <div className="text-3xl font-bold text-white z-10">{passivePerception}</div>
-                                </div>
-                            </div>
-                            
-                            <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 relative overflow-hidden">
-                                <div className="flex justify-between items-end mb-2 relative z-10"><label className="text-slate-400 text-sm font-bold uppercase flex items-center gap-2"><Heart className="text-red-500 fill-current" size={16} /> Points de Vie</label><div className="flex items-center gap-1 text-sm text-slate-500">Max: <input type="number" value={char.hp.max} onChange={(e) => updateChar('hp.max', parseInt(e.target.value) || 0)} className="bg-slate-900 text-slate-300 w-12 text-center rounded border border-slate-700 p-0.5" /></div></div>
-                                <div className="flex items-center gap-4 relative z-10"><button onClick={() => updateChar('hp.current', char.hp.current - 1)} className="bg-red-900/30 hover:bg-red-900/50 text-red-200 w-10 h-10 rounded-full flex items-center justify-center border border-red-900">-</button><input type="number" value={char.hp.current} onChange={(e) => updateChar('hp.current', parseInt(e.target.value) || 0)} className={`bg-transparent text-5xl font-bold text-center w-full outline-none ${char.hp.current <= (char.hp.max/2) ? 'text-red-400' : 'text-white'}`} /><button onClick={() => updateChar('hp.current', char.hp.current + 1)} className="bg-green-900/30 hover:bg-green-900/50 text-green-200 w-10 h-10 rounded-full flex items-center justify-center border border-green-900">+</button></div>
-                                <div className="absolute bottom-0 left-0 h-1 bg-slate-700 w-full"><div className="h-full bg-gradient-to-r from-red-600 to-amber-600 transition-all duration-500" style={{ width: `${Math.min((char.hp.current / char.hp.max) * 100, 100)}%` }}></div></div>
-                            </div>
-
-                            <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
-                                <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-slate-300 flex items-center gap-2"><Sword size={18} /> Attaques</h3><button onClick={() => updateChar('attacks', [...char.attacks, { id: Date.now(), name: "Arme", bonus: "+0", damage: "1d6" }])} className="text-xs bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded transition">+ Ajouter</button></div>
-                                <div>{char.attacks.map((atk, i) => <AttackRow key={atk.id || i} attack={atk} index={i} updateChar={updateChar} attacksList={char.attacks} moveAttack={(idx, d) => moveItem('attacks', idx, d)} />)}</div>
-                                <div className="mt-6 pt-4 border-t border-slate-700">
-                                    <div className="flex justify-between items-center mb-2"><h3 className="font-bold text-slate-300 flex items-center gap-2 text-sm uppercase tracking-wider"><Zap size={16} /> Capacités & Traits</h3><button onClick={() => updateChar('features', [...char.features, { id: Date.now(), name: "Nouveau Trait", description: "" }])} className="text-xs bg-amber-600/20 hover:bg-amber-600/40 text-amber-400 px-2 py-1 rounded transition"><Plus size={12} /> Trait</button></div>
-                                    <div className="space-y-1">{char.features.map((feat, i) => <FeatureRow key={feat.id || i} feature={feat} index={i} updateChar={updateChar} featuresList={char.features} moveFeature={(idx, d) => moveItem('features', idx, d)} />)}</div>
-                                </div>
-                            </div>
+                        {/* COLONNE 2 */}
+                        <div className="md:col-span-5 lg:col-span-6 flex flex-col gap-0">
+                             {char.layout.col2.map(widgetId => (
+                                <WidgetWrapper key={widgetId} id={widgetId} colIndex="col2" isEditing={isEditingLayout} moveWidget={moveWidget}>
+                                    {renderWidget(widgetId)}
+                                </WidgetWrapper>
+                            ))}
                         </div>
 
-                        <div className="md:col-span-4 lg:col-span-4 flex flex-col gap-6">
-                            <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 flex-none">
-                                <h3 className="font-bold text-slate-300 mb-3 flex items-center gap-2 text-sm uppercase tracking-wider"><User size={16} /> Compétences</h3>
-                                <div className="space-y-0.5 divide-y divide-slate-700/50">
-                                    {skillsList.map(s => {
-                                        const p = char.skills[s.key];
-                                        const tot = getModifier(char.stats[s.stat]) + (p===true?profBonus:p==='expert'?profBonus*2:0);
-                                        return (
-                                            <div key={s.key} className="flex items-center justify-between p-2 hover:bg-slate-800 rounded cursor-pointer group" onClick={()=>{const n={...char.skills}; n[s.key]=!p?true:(p===true?'expert':false); updateChar('skills',n)}}>
-                                                <div className="flex items-center gap-2"><div className={`w-3 h-3 rounded-full border border-slate-500 ${p?(p==='expert'?'bg-amber-500 border-amber-500':'bg-white border-white'):''}`}></div><span className={`text-sm ${p?'text-white':'text-slate-400'}`}>{s.label}</span></div>
-                                                <span className="text-sm font-mono font-bold text-slate-300">{formatMod(tot)}</span>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            </div>
-
-                            <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 flex-none">
-                                <div className="grid grid-cols-4 gap-2">
-                                    {['pp','gp','sp','cp'].map(c => <div key={c} className="bg-slate-900/50 rounded p-2 flex flex-col items-center border border-slate-700/50"><label className="text-xs font-bold mb-1 uppercase text-slate-400">{c}</label><input type="number" value={char.coins[c]} onChange={(e)=>updateChar(`coins.${c}`,parseInt(e.target.value)||0)} className="bg-transparent text-center text-white font-mono w-full outline-none" /></div>)}
-                                </div>
-                            </div>
-
-                            <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
-                                <h3 className="font-bold text-slate-300 mb-2 flex items-center gap-2 text-sm uppercase tracking-wider"><MessageSquare size={16} /> Langues Maîtrisées</h3>
-                                <textarea className="w-full bg-slate-900/50 text-slate-300 text-sm p-2 rounded border border-slate-700 focus:border-amber-500/50 outline-none resize-none h-24" value={char.languages} onChange={(e) => updateChar('languages', e.target.value)} placeholder="Langues..." />
-                            </div>
-
-                            <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 flex-1">
-                                <div className="flex justify-between items-center mb-3"><h3 className="font-bold text-slate-300 flex items-center gap-2 text-sm uppercase tracking-wider"><Backpack size={16} /> Inventaire</h3><button onClick={() => updateChar('inventory', [...char.inventory, { id: Date.now(), name: "Objet", qty: 1 }])} className="text-xs bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded transition">+ Ajouter</button></div>
-                                <div className="space-y-1">{char.inventory.map((item, i) => <InventoryRow key={item.id || i} item={item} index={i} updateChar={updateChar} inventoryList={char.inventory} moveInventory={(idx, d) => moveItem('inventory', idx, d)} />)}</div>
-                            </div>
-
-                            <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 h-48 flex flex-col">
-                                <h3 className="font-bold text-slate-300 mb-2 flex items-center gap-2 text-sm uppercase tracking-wider"><Scroll size={16} /> Autres Notes</h3>
-                                <textarea className="flex-1 w-full bg-slate-900/50 text-slate-300 text-sm p-2 rounded border border-slate-700 focus:border-amber-500/50 outline-none resize-none" value={char.notes} onChange={(e) => updateChar('notes', e.target.value)} placeholder="Notes..." />
-                            </div>
+                        {/* COLONNE 3 */}
+                        <div className="md:col-span-4 lg:col-span-4 flex flex-col gap-0">
+                             {char.layout.col3.map(widgetId => (
+                                <WidgetWrapper key={widgetId} id={widgetId} colIndex="col3" isEditing={isEditingLayout} moveWidget={moveWidget}>
+                                    {renderWidget(widgetId)}
+                                </WidgetWrapper>
+                            ))}
                         </div>
                     </main>
 
